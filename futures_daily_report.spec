@@ -14,7 +14,7 @@ import os
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules, copy_metadata
 
-project_root = os.path.abspath(os.path.dirname(__file__))
+project_root = os.path.abspath(SPECPATH)
 
 # ---- 1. 收集 playwright 及其 node 驱动 ----
 pw_datas, pw_binaries, pw_hidden = collect_all('playwright')
