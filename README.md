@@ -8,7 +8,7 @@
 
 ## ✨ 功能特性
 
-- 🖱️ **勾选 + 全选**：7 家期货公司卡片式勾选，支持「全选 / 清空」，实时显示已选数量。
+- 🖱️ **勾选 + 全选**：12 家期货公司卡片式勾选，支持「全选 / 清空」，实时显示已选数量。
 - 📁 **选择保存目录**：点「浏览」弹出系统原生文件夹选择框，也支持直接输入路径，可一键「打开」目录。
 - 📅 **研报日期**：默认当天，可指定任意日期（抓取各站“当日/最近一期”）。
 - ⚡ **实时进度**：逐家公司显示成功 / 失败、文件大小与保存路径。
@@ -26,6 +26,11 @@
 | 东海期货 | HTTP 解析 | `.pdf` | 产业链日报 |
 | 华联期货 | 纯文字 → 公文格式 | `.docx` | 接口全加密，正文纯文字 |
 | 安粮期货 | HTTP 解析 | `.pdf` | 投资早参 |
+| 国泰君安期货 | 图片 → PDF（合并） | `.pdf` | 详情页正文为图片，合并当日全部日报 |
+| 中辉期货 | HTTP 解析（合并） | `.pdf` | 每日黑色/能化/农产品/有色四大板块日报 |
+| 瑞达期货 | HTML转PDF + 附件PDF（合并） | `.pdf` | 晨会纪要 + 金融每日全景（股指/国债/集运欧线） |
+| 广发期货 | HTTP API（合并） | `.pdf` | 期现日报汇总 + 日评 附件 PDF |
+| 国信期货 | 需登录（暂不支持） | — | 页面为前端 JS 且需会员登录，无法自动下载 |
 
 ## 🚀 快速开始（从源码运行）
 
@@ -35,7 +40,7 @@
 
 ```bash
 pip install -r requirements.txt
-python -m playwright install chromium   # 中原、华联两家需要真实浏览器
+python -m playwright install chromium   # 中原、华联、瑞达三家需要真实浏览器
 ```
 
 ### 2. 启动
@@ -77,7 +82,7 @@ pyinstaller futures_daily_report.spec
 ├── app.py                 # Flask 后端（页面 + 接口 + 后台任务）
 ├── crawler/
 │   ├── core.py            # 通用工具（HTTP / 图片转PDF / PDF合并 / docx / 路径）
-│   └── fetchers.py        # 7 家公司抓取函数 + 任务清单
+│   └── fetchers.py        # 12 家公司抓取函数 + 任务清单
 ├── templates/index.html   # 前端面板
 ├── static/
 │   ├── css/style.css      # 深色现代 UI
@@ -89,8 +94,9 @@ pyinstaller futures_daily_report.spec
 
 ## ❓ 常见问题
 
-- **中原 / 华联显示 “Executable doesn't exist”**：说明当前 Python 的 playwright 缺 chromium 内核。执行 `python -m playwright install chromium`。程序启动时也会自动检测并提示。
-- **中原 / 华联下载失败**：多为站点反爬或当天未更新研报，重试或改天再试。
+- **中原 / 华联 / 瑞达显示 “Executable doesn't exist”**：说明当前 Python 的 playwright 缺 chromium 内核。执行 `python -m playwright install chromium`。程序启动时也会自动检测并提示。
+- **国信期货显示“需登录/暂不支持”**：国信官网研报入口为前端 JS 且需会员登录，点击条目无响应，当前版本无法自动下载，请手动访问其官网。
+- **中原 / 华联 / 瑞达下载失败**：多为站点反爬或当天未更新研报，重试或改天再试。
 - **个别公司失败不影响其他公司**：面板逐家独立执行并汇总结果。
 - **证书告警**：工具对部分证书链不完整的期货公司站点关闭了证书校验，属预期行为。
 - **端口占用**：若 8899 端口被占用，可设置环境变量换端口：`set PORT=9000` 后重新启动。

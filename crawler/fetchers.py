@@ -285,6 +285,248 @@ def fetch_alqh(out_dir, date_str, work_dir):
 
 
 # ============================================================
+# 8. 国泰君安期货 —— HTTP 解析（详情页正文为 base64 图片，合并当日全部日报）
+# ============================================================
+def _gtja_images_to_pdf(report_images, pdf_path):
+    """把一家公司多份报告的图片按顺序合并为一个 PDF（每份报告先转一个小 PDF，再合并，控制内存）。"""
+    tmp_parts = []
+    for i, imgs in enumerate(report_images):
+        part = os.path.join(os.path.dirname(pdf_path), f'_gtja_part_{i}.pdf')
+        if imgs:
+            images_to_pdf(imgs, part)
+            tmp_parts.append(part)
+    if tmp_parts:
+        merge_pdfs(tmp_parts, pdf_path)
+    for p in tmp_parts:
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+
+
+def fetch_gtjaqh(out_dir, date_str, work_dir):
+    company = '国泰君安期货'
+    base = 'https://www.gtjaqh.com'
+    target_date = date_str.replace('-', '/')      # 2026/10/09
+    report_images = []      # 每份报告的图片列表
+    found = 0
+    page = 1
+    while page <= 12:
+        r = http_get(f'{base}/mb/report', params={'catType': '', 'page': page})
+        soup = soup_of(r)
+        items = soup.select('a[href*="/pc/reportDetail/"]')
+        if not items:
+            break
+        page_dates = []
+        for a in items:
+            date_el = a.find('span', class_=re.compile('date'))
+            type_el = a.find('span', class_=re.compile('type'))
+            d = (date_el.get_text(strip=True) if date_el else '')
+            t = (type_el.get_text(strip=True) if type_el else '')
+            page_dates.append(d)
+            if d == target_date and t == '日报':
+                href = a.get('href')
+                uuid = href.split('/')[-1]
+                try:
+                    r2 = http_get(f'{base}/pc/reportDetail/{uuid}', timeout=90)
+                    b64s = re.findall(
+                        r'data:image/[a-zA-Z0-9.]+;base64,([A-Za-z0-9+/=]+)', r2.text)
+                except Exception:
+                    time.sleep(1.5)
+                    continue
+                if not b64s:
+                    continue
+                imgs = []
+                for k, b64 in enumerate(b64s):
+                    import base64
+                    try:
+                        raw = base64.b64decode(b64)
+                        if not raw:
+                            continue
+                        local = os.path.join(work_dir, f'gtja_{found}_{k}.jpg')
+                        with open(local, 'wb') as f:
+                            f.write(raw)
+                        imgs.append(local)
+                    except Exception:
+                        continue
+                if imgs:
+                    report_images.append(imgs)
+                    found += 1
+                time.sleep(0.4)   # 放慢节奏，避免被限流
+        # 若整页都没有 目标日期 或更晚 的条目（日期已更早），说明已翻过目标日，停止
+        older = [d for d in page_dates if d and d < target_date]
+        if older:
+            break
+        page += 1
+    if not report_images:
+        raise RuntimeError(f'未在列表页找到 {target_date} 的日报条目')
+    out = target_path(out_dir, company, date_str, 'pdf')
+    _gtja_images_to_pdf(report_images, out)
+    return company, out
+
+
+# ============================================================
+# 9. 中辉期货 —— HTTP 解析（每日四大板块日报 PDF 直链，合并）
+# ============================================================
+def fetch_zhqh(out_dir, date_str, work_dir):
+    company = '中辉期货'
+    base = 'https://www.zhqh.com.cn'
+    target = date_str.replace('-', '')           # 20261009
+    identity = {'Accept-Encoding': 'identity'}   # 站点必须 identity，否则乱码
+    pdf_urls = []
+    r = http_get(base + '/news.asp?id=8', headers=identity)
+    soup = soup_of(r)
+    for a in soup.find_all('a', href=re.compile(r'/uploadfiles/file/\.*')):
+        href = a.get('href')
+        text = a.get_text()
+        if target in text and href.lower().endswith('.pdf'):
+            pdf_urls.append(urllib.parse.urljoin(base, href))
+    # 若第一页不完整，再翻分页版 news100.asp?id=8
+    if not pdf_urls:
+        r = http_get(base + '/news100.asp?id=8', headers=identity)
+        soup = soup_of(r)
+        for a in soup.find_all('a', href=re.compile(r'/uploadfiles/file/\.*')):
+            href = a.get('href')
+            text = a.get_text()
+            if target in text and href.lower().endswith('.pdf'):
+                pdf_urls.append(urllib.parse.urljoin(base, href))
+    if not pdf_urls:
+        raise RuntimeError(f'未找到 {target} 的板块日报 PDF')
+    # 去重（同一日期可能多条）
+    pdf_urls = list(dict.fromkeys(pdf_urls))
+    tmp_dir = ensure_dir(os.path.join(work_dir, 'tmp_zhqh'))
+    pdf_paths = []
+    for i, u in enumerate(pdf_urls):
+        local = os.path.join(tmp_dir, f'zhqh_{i}.pdf')
+        http_download(u, local, headers=identity)
+        pdf_paths.append(local)
+    out = target_path(out_dir, company, date_str, 'pdf')
+    merge_pdfs(pdf_paths, out)
+    return company, out
+
+
+# ============================================================
+# 10. 瑞达期货 —— 晨会纪要(HTML→PDF) + 金融每日全景(PDF)，合并
+# ============================================================
+def _rdqh_find_item(list_url, keywords):
+    """在瑞达列表页找同时命中关键词的条目，返回详情 URL 列表。"""
+    r = http_get(list_url)
+    soup = soup_of(r)
+    out = []
+    for a in soup.find_all('a', href=re.compile(r'/content/show/\d+/\d+')):
+        text = a.get_text()
+        if all(k in text for k in keywords):
+            out.append(urllib.parse.urljoin('https://www.rdqh.com', a['href']))
+    return out
+
+
+def _rdqh_render_pdf(url, pdf_path):
+    """用 Playwright 把瑞达 HTML 详情页渲染为 PDF。"""
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        ctx = browser.new_context(user_agent=UA, locale='zh-CN')
+        page = ctx.new_page()
+        try:
+            page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            page.wait_for_timeout(4000)          # 等图片与正文渲染
+            page.pdf(path=pdf_path, format='A4')
+        finally:
+            browser.close()
+
+
+def fetch_rdqh(out_dir, date_str, work_dir):
+    company = '瑞达期货'
+    base = 'https://www.rdqh.com'
+    target = date_str.replace('-', '')          # 20261009
+    tmp_dir = ensure_dir(os.path.join(work_dir, 'tmp_rdqh'))
+    pdf_paths = []
+
+    # 1) 晨会纪要（HTML → PDF）
+    morning = _rdqh_find_item('https://www.rdqh.com/content/index/61', [target])
+    if morning:
+        m_pdf = os.path.join(tmp_dir, 'morning.pdf')
+        _rdqh_render_pdf(morning[0], m_pdf)
+        pdf_paths.append(m_pdf)
+
+    # 2) 金融每日全景（PDF 附件）
+    for detail in _rdqh_find_item('https://www.rdqh.com/content/index/116', [target]):
+        r = http_get(detail)
+        m = re.search(r'href="(/upload/files/[^"]*\.pdf)"', r.text, re.I)
+        if not m:
+            continue
+        pdf_url = urllib.parse.urljoin(base, m.group(1))
+        local = os.path.join(tmp_dir, f'fin_{len(pdf_paths)}.pdf')
+        http_download(pdf_url, local)
+        pdf_paths.append(local)
+
+    if not pdf_paths:
+        raise RuntimeError(f'未找到 {target} 的瑞达研报')
+    out = target_path(out_dir, company, date_str, 'pdf')
+    merge_pdfs(pdf_paths, out)
+    return company, out
+
+
+# ============================================================
+# 11. 广发期货 —— HTTP API（列表接口 + 文章附件 PDF，合并）
+# ============================================================
+def fetch_gfqh(out_dir, date_str, work_dir):
+    company = '广发期货'
+    target = date_str.replace('-', '')          # 20261009
+    api = 'https://rd.gfqh.cn/RDInformation/article/index/reports/100009'
+    hdrs = {'Referer': 'https://rd.gfqh.cn/RDInformation/menu/236'}
+    r = http_get(api, headers=hdrs)
+    soup = soup_of(r)
+    ids = []
+    for li in soup.select('li.invest-reporter-news-item'):
+        onclick = li.get('onclick') or ''
+        m = re.search(r'article/(\d+)', onclick)
+        if not m:
+            continue
+        texts = [s.get_text(strip=True) for s in li.find_all('span')]
+        title = next((t for t in texts if t.startswith('广发期货')), '')
+        if target in title:
+            ids.append(m.group(1))
+    # 兜底：若上面按标题没筛到，退回收集当天列表里全部文章 id
+    if not ids:
+        for li in soup.select('li.invest-reporter-news-item'):
+            m = re.search(r'article/(\d+)', li.get('onclick') or '')
+            if m:
+                ids.append(m.group(1))
+    if not ids:
+        raise RuntimeError(f'未在广发列表接口找到 {target} 的研报')
+
+    tmp_dir = ensure_dir(os.path.join(work_dir, 'tmp_gfqh'))
+    pdf_paths = []
+    seen = set()
+    for aid in ids:
+        ar = http_get(f'https://rd.gfqh.cn/RDInformation/article/{aid}', headers=hdrs)
+        for m in re.finditer(r'data-url="([^"]+\.pdf)"', ar.text, re.I):
+            url = m.group(1)
+            if url in seen:
+                continue
+            seen.add(url)
+            local = os.path.join(tmp_dir, f'gfqh_{len(pdf_paths)}.pdf')
+            http_download(url, local, headers=hdrs)
+            pdf_paths.append(local)
+    if not pdf_paths:
+        raise RuntimeError(f'广发 {target} 的文章详情页未找到 PDF 附件')
+    out = target_path(out_dir, company, date_str, 'pdf')
+    merge_pdfs(pdf_paths, out)
+    return company, out
+
+
+# ============================================================
+# 12. 国信期货 —— 页面为 JS 触发、需登录/会员，暂无法自动下载
+# ============================================================
+def fetch_guosenqh(out_dir, date_str, work_dir):
+    company = '国信期货'
+    raise RuntimeError(
+        '国信期货研报入口（vcc.guosenqh.com.cn）为前端 JS 触发且需登录/会员，'
+        '点击条目无响应，当前版本无法自动下载，请手动访问其官网获取。')
+
+
+# ============================================================
 # 任务清单（供前端勾选与后端调度）
 # ============================================================
 TASKS = [
@@ -343,5 +585,45 @@ TASKS = [
         'ext': 'pdf',
         'method': 'HTTP 解析 · PDF',
         'desc': '投资早参，列表项直接指向 PDF',
+    },
+    {
+        'id': 'gtjaqh',
+        'company': '国泰君安期货',
+        'fn': fetch_gtjaqh,
+        'ext': 'pdf',
+        'method': 'HTTP 解析 · 图片转PDF',
+        'desc': '详情页正文为图片，合并当日全部日报',
+    },
+    {
+        'id': 'zhqh',
+        'company': '中辉期货',
+        'fn': fetch_zhqh,
+        'ext': 'pdf',
+        'method': 'HTTP 解析 · 合并PDF',
+        'desc': '每日四大板块日报 PDF 直链，合并',
+    },
+    {
+        'id': 'rdqh',
+        'company': '瑞达期货',
+        'fn': fetch_rdqh,
+        'ext': 'pdf',
+        'method': 'HTML转PDF + 附件PDF',
+        'desc': '晨会纪要(渲染PDF)+金融每日全景(PDF) 合并',
+    },
+    {
+        'id': 'gfqh',
+        'company': '广发期货',
+        'fn': fetch_gfqh,
+        'ext': 'pdf',
+        'method': 'HTTP API · 合并PDF',
+        'desc': '期现日报汇总+日评 附件 PDF，合并',
+    },
+    {
+        'id': 'guosenqh',
+        'company': '国信期货',
+        'fn': fetch_guosenqh,
+        'ext': 'pdf',
+        'method': '需登录（暂不支持）',
+        'desc': '页面为前端JS且需会员登录，暂无法自动下载',
     },
 ]

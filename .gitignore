@@ -26,3 +26,7 @@ report_test/
 report_test2/
 report_test3/
 report_all7/
+
+# 运行日志
+server*.log
+server*.err.log

@@ -65,7 +65,7 @@
   <div class="hero">
     <span class="badge">开源 · 本地运行 · 数据来自各期货公司官网公开页面</span>
     <h1>期货公司日研报下载器</h1>
-    <p>在精美面板里勾选 7 家期货公司、选择保存目录与日期，一键抓取当日（最近一期）期货日研报，保存为 PDF / DOCX。</p>
+    <p>在精美面板里勾选 12 家期货公司、选择保存目录与日期，一键抓取当日（最近一期）期货日研报，保存为 PDF / DOCX。</p>
     <div class="btns">
       <a class="btn dl" href="https://github.com/chenzhuanxin/futures-daily-report-downloader/releases/latest">⬇ 下载 Windows 版 exe</a>
       <a class="btn ghost" href="https://github.com/chenzhuanxin/futures-daily-report-downloader">GitHub 仓库</a>
@@ -76,7 +76,7 @@
   <div class="card">
     <h2><span class="n">★</span>功能特性</h2>
     <ul>
-      <li><b>勾选 + 全选</b>：7 家期货公司卡片式勾选，支持「全选 / 清空」，实时显示已选数量。</li>
+      <li><b>勾选 + 全选</b>：12 家期货公司卡片式勾选，支持「全选 / 清空」，实时显示已选数量。</li>
       <li><b>选择保存目录</b>：点「浏览」弹出系统原生文件夹选择框，也支持直接输入路径，可一键「打开」目录。</li>
       <li><b>研报日期</b>：默认当天，可指定任意日期（抓取各站“当日/最近一期”）。</li>
       <li><b>实时进度</b>：逐家公司显示成功 / 失败、文件大小与保存路径。</li>
@@ -97,6 +97,11 @@
         <tr><td>东海期货</td><td>HTTP 解析</td><td><span class="tag pdf">PDF</span></td><td>产业链日报</td></tr>
         <tr><td>华联期货</td><td>Playwright</td><td><span class="tag docx">DOCX</span></td><td>接口加密，正文纯文字 → 公文格式</td></tr>
         <tr><td>安粮期货</td><td>HTTP 解析</td><td><span class="tag pdf">PDF</span></td><td>投资早参</td></tr>
+        <tr><td>国泰君安期货</td><td>图片 → PDF（合并）</td><td><span class="tag pdf">PDF</span></td><td>合并当日全部日报</td></tr>
+        <tr><td>中辉期货</td><td>HTTP 解析（合并）</td><td><span class="tag pdf">PDF</span></td><td>黑色/能化/农产品/有色四板块日报</td></tr>
+        <tr><td>瑞达期货</td><td>HTML转PDF + 附件PDF</td><td><span class="tag pdf">PDF</span></td><td>晨会纪要 + 金融每日全景</td></tr>
+        <tr><td>广发期货</td><td>HTTP API（合并）</td><td><span class="tag pdf">PDF</span></td><td>期现日报汇总 + 日评</td></tr>
+        <tr><td>国信期货</td><td>需登录</td><td><span class="tag pdf">—</span></td><td>前端 JS + 会员登录，暂不支持</td></tr>
       </tbody>
     </table>
   </div>
@@ -116,7 +121,7 @@
     <h2><span class="n">▶</span>从源码运行</h2>
     <div class="code">pip install -r requirements.txt<br>python -m playwright install chromium<br>python app.py</div>
     <p>浏览器打开 <b>http://127.0.0.1:8899</b> 即可使用（Windows 也可双击 <code>启动.bat</code>）。</p>
-    <div class="warn">📌 中原期货 / 华联期货依赖 Playwright 的 chromium 内核；exe 版已内置，源码运行需执行上面的 <code>playwright install chromium</code>。</div>
+    <div class="warn">📌 中原期货 / 华联期货 / 瑞达期货依赖 Playwright 的 chromium 内核；exe 版已内置，源码运行需执行上面的 <code>playwright install chromium</code>。国信期货入口需会员登录，暂无法自动下载。</div>
   </div>
 
   <div class="foot">
