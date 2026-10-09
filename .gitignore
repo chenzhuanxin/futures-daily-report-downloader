@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# PyInstaller
+build/
+dist/
+*.spec
+!futures_daily_report.spec
+
+# 运行产物
+.crawler_tmp/
+期货日研投*/
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 测试目录
+report_test/
+report_test2/
+report_test3/
+report_all7/

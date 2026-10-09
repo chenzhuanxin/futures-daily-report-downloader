@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>期货公司日研报下载器</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="bg-decor" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="grid"></span>
+  </div>
+
+  <main class="shell">
+    <!-- 头部 -->
+    <header class="hero">
+      <div class="brand">
+        <div class="brand-mark">研</div>
+        <div>
+          <h1>期货公司日研报下载器</h1>
+          <p class="sub">勾选期货公司 → 选择保存目录 → 一键抓取当日（最近一期）研报</p>
+        </div>
+      </div>
+      <div class="pill today" id="todayPill">—</div>
+    </header>
+
+    <!-- 配置面板 -->
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="step-no">1</span>选择期货公司</h2>
+        <div class="sel-actions">
+          <label class="mini-chk">
+            <input type="checkbox" id="selectAll">
+            <span class="mini-box"></span>
+            全选
+          </label>
+          <button class="link-btn" id="clearAll">清空</button>
+        </div>
+      </div>
+      <div class="company-grid" id="companyGrid">
+        <!-- 由 JS 渲染 -->
+      </div>
+      <div class="selected-count" id="selectedCount">已选 0 / 7 家</div>
+    </section>
+
+    <div class="two-col">
+      <!-- 日期 -->
+      <section class="card slim">
+        <div class="card-head">
+          <h2><span class="step-no">2</span>研报日期</h2>
+        </div>
+        <div class="field">
+          <input type="date" id="reportDate" class="date-input">
+          <p class="hint">缺省为当天；抓取各站“当日（最近一期）”研报。</p>
+        </div>
+      </section>
+
+      <!-- 保存目录 -->
+      <section class="card slim">
+        <div class="card-head">
+          <h2><span class="step-no">3</span>保存目录</h2>
+        </div>
+        <div class="dir-row">
+          <input type="text" id="outDir" class="dir-input" placeholder="点击右侧“浏览”选择文件夹，或直接输入路径">
+          <button class="btn btn-browse" id="browseBtn">浏览</button>
+          <button class="btn btn-open" id="openBtn" title="打开目录">打开</button>
+        </div>
+        <p class="hint">下载内容将保存到所选目录下的「期货日研投+日期」子文件夹。</p>
+      </section>
+    </div>
+
+    <!-- 执行 -->
+    <section class="card">
+      <div class="run-bar">
+        <button class="btn btn-primary" id="runBtn">
+          <span class="btn-ico">⤓</span> 开始下载
+        </button>
+        <button class="btn btn-ghost" id="stopBtn" disabled>停止</button>
+        <div class="progress-wrap">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="progressText">0 / 0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 实时日志 -->
+    <section class="card log-card" id="logCard" hidden>
+      <div class="card-head">
+        <h2>实时进度</h2>
+        <span class="status-chip" id="statusChip">进行中</span>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+
+    <!-- 结果 -->
+    <section class="card" id="resultCard" hidden>
+      <div class="card-head">
+        <h2>下载结果</h2>
+        <span class="result-sum" id="resultSum"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead>
+            <tr><th>期货公司</th><th>状态</th><th>文件 / 说明</th><th>大小</th></tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+      <p class="foot-tip" id="footTip"></p>
+    </section>
+
+    <footer class="page-foot">
+      基于微信公众号《公歧研究：商品日研投获取.py》逻辑构建 · 本地运行 · 数据来自各期货公司官网公开页面
+    </footer>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

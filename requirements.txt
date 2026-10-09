@@ -1,0 +1,12 @@
+# 期货公司日研报下载器 依赖
+# 安装：pip install -r requirements.txt
+# 额外：python -m playwright install chromium   （中原期货、华联期货需要真实浏览器）
+flask>=3.0
+requests
+beautifulsoup4
+lxml
+python-docx
+pillow
+pypdf
+urllib3
+playwright
