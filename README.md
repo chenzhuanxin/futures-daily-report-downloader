@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.png" width="120" alt="futures-daily-report-downloader"></p>
+
 # 期货公司日研报下载器
 
 一个 **本地可视化工具**：在浏览器面板里勾选要下载的期货公司、选择保存目录与日期，一键抓取各期货公司官网当日（最近一期）的期货日研报，保存为 PDF / DOCX。
